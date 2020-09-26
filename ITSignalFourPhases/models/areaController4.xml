@@ -1,0 +1,624 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int UINT32_MAX = 429496720;
+typedef int[-100,UINT32_MAX] int32_t;
+const int N = 5; // Number of traffic lights
+const int sigPhase = 4; // number of signal phase per intersection
+clock t;
+int32_t globalwaitingVehicles = 0;
+int EH = 50;
+
+int32_t totalJam = 0;
+typedef int[3,10] maxGreen_t;
+typedef int[1,5] neighbours;
+typedef int[1,4] directions;
+typedef int[1,N] traffic_light;
+traffic_light tr;
+broadcast chan CN[traffic_light],CNE[traffic_light],CM[traffic_light],CME[traffic_light],final;
+
+int cMaxGrn[neighbours][directions] = {
+{10,10,10,10}, // North, East, South, West of up neighbour
+{0,0,0,0}, // right
+{0,0,0,0}, // bottom
+{0,0,0,0}, // left
+{0,0,0,0} // centre
+};
+
+
+int maxGrn[neighbours][directions] = {
+{15,10,10,10}, // North, East, South, West of up neighbour
+{50,50,50,50}, // right
+{50,50,50,50}, // bottom
+{50,50,50,50}, // left
+{50,50,50,50} // centre
+};
+
+
+//int vehicleCount[neighbours][directions] = {
+//{5,6,4,8}, // North, East, South, West of up neighbour
+//{80,3,60,2}, // right
+//{6,8,9,10}, // bottom
+//{75,10,90,20}, // left
+//{95,20,90,12} // centre
+//};
+
+int distanceToNeighbour[neighbours][directions] = {
+{0,26,41,0}, // North,East,South,West
+{0,0,31,41},
+{25,42,31,26},
+{0,0,25,0},
+{0,0,0,42}
+};
+
+int neighbourList[neighbours][directions] = {
+{0,3,2,0}, // North,East,South,West - neihgbour of 1 is 3
+{3,0,0,0},
+{4,5,2,1},
+{0,0,3,0},
+{0,0,0,3}
+};
+
+int distributionList[neighbours][12] = {
+{10,80,10,10,80,10,10,80,10,10,80,10}, // North,East,South,West - neihgbour of 1 is 3
+{10,80,10,10,80,10,10,80,10,10,80,10},
+{10,80,10,10,80,10,10,80,10,10,80,10},
+{10,80,10,10,80,10,10,80,10,10,80,10},
+{10,80,10,10,80,10,10,80,10,10,80,10}
+};
+
+//VEHICLE_LIST</declaration>
+	<template>
+		<name x="5" y="5">areaController</name>
+		<declaration>traffic_light range = N;
+int i;
+//int j= 0;</declaration>
+		<location id="id0" x="119" y="629">
+			<name x="102" y="646">start</name>
+			<committed/>
+		</location>
+		<location id="id1" x="323" y="697">
+		</location>
+		<location id="id2" x="221" y="629">
+			<committed/>
+		</location>
+		<location id="id3" x="323" y="527">
+			<committed/>
+		</location>
+		<location id="id4" x="425" y="629">
+			<committed/>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="guard" x="290" y="408">i &gt; range</label>
+			<label kind="assignment" x="290" y="442">i = 1</label>
+			<nail x="374" y="442"/>
+			<nail x="272" y="442"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="assignment" x="341" y="578">i = i+1</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="365" y="671">CNE[i]?</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="239" y="544">i &lt;= range</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="221" y="646">CN[i]!</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="137" y="629">i = 1</label>
+		</transition>
+	</template>
+	<template>
+		<name>trafficLight</name>
+		<parameter>const int tr</parameter>
+		<declaration>// Place local declarations here.
+
+int delay = 5;
+int cs = 0;
+int H = 10;
+int32_t totalwaitingVehicles = 0;
+int NDG = 0;
+int EDG = 0;
+int SDG = 0;
+int WDG = 0;
+int arrivalUpdate[4][40] = {
+ {0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0}, // time to store
+ {0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0}, // phase to store
+ {0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0},  // number of cars crossed  in East/North directions to store
+ {0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0}  // number of cars crossed  in West/South directions to store
+};
+
+
+void initialize(){
+    totalwaitingVehicles = 1;
+}
+
+void updateGreenMax(){
+    NDG = maxGrn[tr][1];
+    EDG = maxGrn[tr][2];
+    SDG = maxGrn[tr][3];
+    WDG = maxGrn[tr][4]; 
+}
+
+int calculateWaitingVehicles(int c_phase){
+    int waitingVeh = 0;
+    int i = 1,j=1;
+    for(j=1;j&lt;=4;j++){
+        if(j!= c_phase){
+
+                waitingVeh = waitingVeh + vehicleCount[tr][j];
+        }
+    }
+
+    return waitingVeh;
+}
+
+
+int reduceVehicleCount(int c_phase){
+
+    int j=1;
+    int carPassed = 0;
+    for(j=1;j&lt;=4;j++){
+        if(j == c_phase){
+           if(vehicleCount[tr][j]&gt;0)
+                {vehicleCount[tr][j] =  vehicleCount[tr][j] - 2; carPassed = carPassed + 2;}
+           else { vehicleCount[tr][j] = 0;}
+        }
+    }
+    return carPassed;
+}
+
+
+void updateGeneralArrivalList(int c_step,int c_phase){
+    int index = 0;
+    
+    if(c_phase == 1){
+        int dir_E = distributionList[tr][0];
+        int dir_S = distributionList[tr][1];
+        int dir_W = distributionList[tr][2];
+        int i = 1;
+        for(i=1;i&lt;=4;i++){
+            // run all neighbours
+            if(neighbourList[tr][i] != 0){
+                if( c_step &gt;= distanceToNeighbour[tr][i]){
+                    index = (c_step - distanceToNeighbour[tr][i])/ 5;
+                    // update all side based on the distribution
+                    if(i==2){
+                        vehicleCount[neighbourList[tr][i]][4] = vehicleCount[neighbourList[tr][i]][4] +  (dir_E *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==3){
+                        vehicleCount[neighbourList[tr][i]][1] = vehicleCount[neighbourList[tr][i]][1] +  (dir_S *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==4){
+                        vehicleCount[neighbourList[tr][i]][2] = vehicleCount[neighbourList[tr][i]][2] +  (dir_W *  arrivalUpdate[2][index] )/100 ;
+                    }
+                }
+            }
+        }
+    }
+
+    if(c_phase == 2){
+        int dir_N = distributionList[tr][5];
+        int dir_S = distributionList[tr][3];
+        int dir_W = distributionList[tr][4];
+        int i = 1;
+        for(i=1;i&lt;=4;i++){
+            // run all neighbours
+            if(neighbourList[tr][i] != 0){
+                if( c_step &gt;= distanceToNeighbour[tr][i]){
+                    index = (c_step - distanceToNeighbour[tr][i])/ 5;
+                    // update all side based on the distribution
+                    if(i==1){
+                        vehicleCount[neighbourList[tr][i]][3] = vehicleCount[neighbourList[tr][i]][3] +  (dir_N *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==3){
+                        vehicleCount[neighbourList[tr][i]][1] = vehicleCount[neighbourList[tr][i]][1] +  (dir_S *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==4){
+                        vehicleCount[neighbourList[tr][i]][2] = vehicleCount[neighbourList[tr][i]][2] +  (dir_W *  arrivalUpdate[2][index] )/100 ;
+                    }
+                }
+            }
+        }
+    }
+
+    if(c_phase == 3){
+        int dir_E = distributionList[tr][8];
+        int dir_N = distributionList[tr][7];
+        int dir_W = distributionList[tr][6];
+        int i = 1;
+        for(i=1;i&lt;=4;i++){
+            // run all neighbours
+            if(neighbourList[tr][i] != 0){
+                if( c_step &gt;= distanceToNeighbour[tr][i]){
+                    index = (c_step - distanceToNeighbour[tr][i])/ 5;
+                    // update all side based on the distribution
+                    if(i==2){
+                        vehicleCount[neighbourList[tr][i]][4] = vehicleCount[neighbourList[tr][i]][4] +  (dir_E *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==1){
+                        vehicleCount[neighbourList[tr][i]][3] = vehicleCount[neighbourList[tr][i]][3] +  (dir_N *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==4){
+                        vehicleCount[neighbourList[tr][i]][2] = vehicleCount[neighbourList[tr][i]][2] +  (dir_W *  arrivalUpdate[2][index] )/100 ;
+                    }
+                }
+            }
+        }
+    }
+
+    if(c_phase == 4){
+        int dir_E = distributionList[tr][10];
+        int dir_S = distributionList[tr][11];
+        int dir_N = distributionList[tr][9];
+        int i = 1;
+        for(i=1;i&lt;=4;i++){
+            // run all neighbours
+            if(neighbourList[tr][i] != 0){
+                if( c_step &gt;= distanceToNeighbour[tr][i]){
+                    index = (c_step - distanceToNeighbour[tr][i])/ 5;
+                    // update all side based on the distribution
+                    if(i==2){
+                        vehicleCount[neighbourList[tr][i]][4] = vehicleCount[neighbourList[tr][i]][4] +  (dir_E *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==3){
+                        vehicleCount[neighbourList[tr][i]][1] = vehicleCount[neighbourList[tr][i]][1] +  (dir_S *  arrivalUpdate[2][index] )/100 ;
+                    }
+                    if(i==1){
+                        vehicleCount[neighbourList[tr][i]][3] = vehicleCount[neighbourList[tr][i]][3] +  (dir_N *  arrivalUpdate[2][index] )/100 ;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+void flow(int current_delay,int current_phase){
+    const int upperStep = cs + current_delay;
+    int j;
+    int carPassed = 0;
+    for (j=cs; j&lt;upperStep; j++) {
+        totalwaitingVehicles = totalwaitingVehicles + calculateWaitingVehicles(current_phase);
+        carPassed = carPassed + reduceVehicleCount(current_phase);
+    }
+    arrivalUpdate[0][cs/5] = cs;
+    arrivalUpdate[1][cs/5] = current_phase;
+    arrivalUpdate[2][cs/5] = carPassed;
+    updateGeneralArrivalList(cs,current_phase);
+    cs = cs + current_delay;
+    t = 0;
+}
+</declaration>
+		<location id="id5" x="-323" y="-51">
+			<name x="-333" y="-85">W</name>
+			<label kind="invariant" x="-348" y="-25">t &lt;= delay</label>
+		</location>
+		<location id="id6" x="-119" y="-51">
+			<committed/>
+		</location>
+		<location id="id7" x="-119" y="-221">
+			<name x="-129" y="-255">N</name>
+			<label kind="invariant" x="-102" y="-255">t &lt;= delay</label>
+		</location>
+		<location id="id8" x="85" y="-51">
+			<name x="75" y="-85">E</name>
+			<label kind="invariant" x="75" y="-34">t &lt;= delay</label>
+		</location>
+		<location id="id9" x="-119" y="119">
+			<name x="-127" y="136">S</name>
+			<label kind="invariant" x="-93" y="110">t &lt;= delay</label>
+		</location>
+		<location id="id10" x="-323" y="119">
+			<name x="-333" y="85">NG</name>
+		</location>
+		<location id="id11" x="51" y="119">
+			<name x="41" y="85">End</name>
+		</location>
+		<location id="id12" x="-331" y="-221">
+			<name x="-341" y="-255">start</name>
+		</location>
+		<location id="id13" x="-221" y="-136">
+			<name x="-231" y="-170">IN</name>
+			<committed/>
+		</location>
+		<init ref="id12"/>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-203" y="-110">CM[tr]!</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-313" y="-195">CN[tr]?</label>
+			<label kind="assignment" x="-313" y="-178">initialize()</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id11"/>
+			<label kind="guard" x="42" y="42">cs &gt;= EH</label>
+			<label kind="synchronisation" x="42" y="59">CNE[tr]!</label>
+			<label kind="assignment" x="-51" y="-17">globalwaitingVehicles = 
+globalwaitingVehicles + 
+totalwaitingVehicles,updateGreenMax()</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id10"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-297" y="17">CN[tr]?</label>
+			<label kind="assignment" x="-399" y="34">H = H+10</label>
+			<nail x="-204" y="-8"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-272" y="93">cs &gt;= H &amp;&amp; cs &lt;= EH</label>
+			<label kind="synchronisation" x="-255" y="76">CNE[tr]!</label>
+			<nail x="-170" y="34"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id9"/>
+			<target ref="id6"/>
+			<label kind="assignment" x="-212" y="42">flow(delay,3)</label>
+			<nail x="-136" y="68"/>
+			<nail x="-136" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-127" y="51">cs &lt;= H &amp;&amp; cMaxGrn[tr][3] 
+&lt;= maxGrn[tr][3]</label>
+			<nail x="-102" y="0"/>
+			<nail x="-102" y="68"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-50" y="-68">t &gt;= delay</label>
+			<label kind="assignment" x="-50" y="-34">flow(delay,2)</label>
+			<nail x="34" y="-34"/>
+			<nail x="-68" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-68" y="-110">cs &lt;= H &amp;&amp; cMaxGrn[tr][2] 
+&lt;= maxGrn[tr][2]</label>
+			<nail x="-68" y="-68"/>
+			<nail x="34" y="-68"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-110" y="-229">t &gt;= delay</label>
+			<label kind="assignment" x="-102" y="-195">flow(delay,1)</label>
+			<nail x="-102" y="-170"/>
+			<nail x="-102" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-187" y="-161">cs &lt;= H &amp;&amp; cMaxGrn[tr][1] 
+&lt;= maxGrn[tr][1]</label>
+			<nail x="-136" y="-102"/>
+			<nail x="-136" y="-170"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-297" y="-59">cs &lt;= H &amp;&amp; cMaxGrn[tr][4] 
+&lt;= maxGrn[tr][4]</label>
+			<nail x="-170" y="-34"/>
+			<nail x="-272" y="-34"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-254" y="-102">t &gt;= delay</label>
+			<label kind="assignment" x="-255" y="-93">flow(delay,4)</label>
+			<nail x="-272" y="-68"/>
+			<nail x="-170" y="-68"/>
+		</transition>
+	</template>
+	<template>
+		<name>chooseMaxGreen</name>
+		<parameter>const int tr</parameter>
+		<declaration>typedef int[2,9] max_t;
+int maxValue = 0;
+
+
+void assignMax(int direction,int maxi){
+
+    maxGrn[tr][direction] = maxi;
+    maxValue = maxi;
+}</declaration>
+		<location id="id14" x="-527" y="-51">
+		</location>
+		<location id="id15" x="-391" y="-51">
+			<committed/>
+		</location>
+		<location id="id16" x="-255" y="-51">
+			<committed/>
+		</location>
+		<location id="id17" x="-255" y="-153">
+			<committed/>
+		</location>
+		<location id="id18" x="-391" y="-153">
+			<committed/>
+		</location>
+		<location id="id19" x="-535" y="-170">
+			<committed/>
+		</location>
+		<init ref="id14"/>
+		<transition controllable="false">
+			<source ref="id19"/>
+			<target ref="id14"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="select" x="-517" y="-212">e:max_t</label>
+			<label kind="assignment" x="-517" y="-161">assignMax(1,e*10)</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id17"/>
+			<target ref="id18"/>
+			<label kind="select" x="-373" y="-204">e:max_t</label>
+			<label kind="assignment" x="-373" y="-153">assignMax(4,e*10)</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="select" x="-255" y="-127">e:max_t</label>
+			<label kind="assignment" x="-255" y="-102">assignMax(3,e*10)</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id15"/>
+			<target ref="id16"/>
+			<label kind="select" x="-373" y="-102">e:max_t</label>
+			<label kind="assignment" x="-373" y="-51">assignMax(2,e*10)</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-509" y="-68">CM[tr]?</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+trafficLight_1 = trafficLight(1);
+trafficLight_2 = trafficLight(2);
+trafficLight_3 = trafficLight(3);
+trafficLight_4 = trafficLight(4);
+trafficLight_5 = trafficLight(5);
+cm_1 = chooseMaxGreen(1);
+cm_2 = chooseMaxGreen(2);
+cm_3 = chooseMaxGreen(3);
+cm_4 = chooseMaxGreen(4);
+cm_5 = chooseMaxGreen(5);
+areaController1= areaController();
+system areaController1,trafficLight_1,trafficLight_2,trafficLight_3,trafficLight_4,trafficLight_5,cm_1,cm_2,cm_3,cm_4,cm_5;
+    </system>
+	<queries>
+		<query>
+			<formula>strategy Opt =minE (globalwaitingVehicles) [&lt;=300]: &lt;&gt; trafficLight_1.End</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt =maxE (crossedCarsTotal) [&lt;=450]: &lt;&gt; timer&gt;=400</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=500] { 1*trafficLight_1.N + 2*trafficLight_1.E+ 3* trafficLight_1.S + 4*trafficLight_1.W , 
+5*trafficLight_2.N + 6* trafficLight_2.E+ 7*trafficLight_2.S + 8*trafficLight_2.W ,
+9* trafficLight_3.N + 10*trafficLight_3.E +11*trafficLight_3.S + 12* trafficLight_3.W,
+13*trafficLight_4.N + 14*trafficLight_4.E + 15* trafficLight_4.S + 16* trafficLight_4.W,
+17*trafficLight_5.N + 18*trafficLight_5.E + 19* trafficLight_5.S + 20* trafficLight_5.W } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=500] { 1*cm_1.maxValue,1*cm_2.maxValue }</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=500] { 1*trafficLight_1.NDG,1*trafficLight_1.EDG,1* trafficLight_1.SDG ,1*trafficLight_1.WDG } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*areaController1.max } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*areaController1.max }</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_2.green + 6*trafficLight_2.yellow + 10* trafficLight_2.red } under Opt1</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt2 =minE (trafficLight_2.totalJammedCars) [&lt;=4*180]: &lt;&gt; timer &gt;=300</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt3 =minE (totalwaitingCars) [&lt;=500]: &lt;&gt; trafficLight_3.Ok</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_3.green + 6*trafficLight_3.yellow + 10* trafficLight_3.red } under Opt3</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=4*80] { 2*trafficLight_1.GREEN_A + 4*trafficLight_1.YELLOW + 6* trafficLight_1.GREEN_B,8*trafficLight_2.GREEN_A + 10*trafficLight_2.YELLOW + 12* trafficLight_2.GREEN_B } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_2.GREEN_A + 6*trafficLight_2.YELLOW + 8* trafficLight_2.GREEN_B,10*trafficLight_1.GREEN_A + 12*trafficLight_1.YELLOW + 14* trafficLight_1.GREEN_B } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=300] { 2*trafficLight_3.green + 6*trafficLight_3.yellow + 10* trafficLight_3.red } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=700] { 2*trafficLight_4.green + 6*trafficLight_4.yellow + 10* trafficLight_4.red } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=300] { 2*trafficLight_5.green + 6*trafficLight_5.yellow + 10* trafficLight_5.red } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=500; 50] (min: totalwaitingCars)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=2000; 5000] (max: crossedCarsTotal) under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=2000; 5000] (max: crossedCarsTotal)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*TL_model.green + 6*TL_model.yellow + 10* TL_model.red }</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

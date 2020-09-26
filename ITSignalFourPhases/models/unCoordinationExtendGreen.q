@@ -1,0 +1,2 @@
+strategy Opt =minE (totalwaitingVehicles) [<=120]: <> extendGreen.End
+simulate 1[<=100] { 2*extendGreen.greenAgain + 4*extendGreen.goYellow_1 + 6*extendGreen.goYellow_2 + 8*extendGreen.goYellow_3 } under Opt

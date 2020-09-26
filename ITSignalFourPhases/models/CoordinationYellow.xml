@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int UINT32_MAX = 429496720;
+typedef int[-100,UINT32_MAX] int32_t;
+const int N = 4;
+const int sigPhase = 4; // number of signal phase per intersection
+int Phase = 1; // 1 - North, 2 - East, 3 - South, 4 - West
+clock t;
+int32_t totalwaitingVehicles = 0;
+int32_t totalQueueLength = 0;
+int crossedCarsTotal = 0;
+int Horizon = 120;
+int cs = 0;
+int delay = 5;
+typedef int[1,N] direc;
+direc directions,vehTypes;
+
+int currentPhase = 1;
+
+
+//int waitingVehicles[direc][direc]={
+//{10,10,10,10}, // Bus, Car, 3- Wheeler, 2-Wheeler in North direction
+//{0,0,0,0}, // East 
+//{0,0,0,0}, // South
+//{10,0,0,0}  // West
+//};
+//int queueLength[direc] = {130,6,7,4}; // North, East, South, West
+//int currentGreenTime[direc] = {75,40,40,40}; // North, East, South, West
+//int maxGreenTime[direc] = {70,60,60,50}; // North, East, South, West
+
+
+//VEHICLE-LIST
+//QUEUE-LENGTH
+//CUR-GREEN-TIME
+//MAXIMUM-GREEN-TIME
+
+</declaration>
+	<template>
+		<name x="5" y="5">yellowPhase</name>
+		<declaration>// Place local declarations here.
+ 
+int busLength = 20;
+int carLength = 10;
+int bikeLength = 3;
+int grnNorth = 0;
+int grnEast = 0;
+int grnSouth = 0;
+int grnWest = 0;
+int maxNorth =0;
+int maxEast = 0;
+int maxSouth = 0;
+int maxWest = 0;
+void initialize(){
+    grnNorth = currentGreenTime[1];
+    grnEast = currentGreenTime[2];
+    grnSouth = currentGreenTime[3];
+    grnWest = currentGreenTime[4];
+    maxNorth = maxGreenTime[1];
+    maxEast = maxGreenTime[2];
+    maxSouth = maxGreenTime[3];
+    maxWest = maxGreenTime[4];
+}
+
+
+int calculateWaitingVehicles(int c_phase){
+    int waitingVeh = 0;
+    int queueLen = 0;
+    int i = 1,j=1;
+    for(j=1;j&lt;=4;j++){
+        if(j!= c_phase){
+            queueLen = queueLen + queueLength[j];
+            for(i=1;i&lt;=4;i++){
+                waitingVeh = waitingVeh + waitingVehicles[j][i];
+            }
+        }
+    }
+
+    return waitingVeh;
+}
+int calculateQueueLength(int c_phase){
+    int queueLen = 0;
+    int j=1;
+    for(j=1;j&lt;=4;j++){
+        if(j!= c_phase){
+            if(queueLength[j] &gt; 0){
+                queueLen = queueLen + queueLength[j];
+            }
+        }
+    }
+
+    return queueLen;
+}
+
+
+void normalValue(int i, int j,int stepReduction,int vehLength)
+{
+  if( waitingVehicles[j][i] &gt; stepReduction ){waitingVehicles[j][i] = waitingVehicles[j][i] - stepReduction ;}
+  else{waitingVehicles[j][i] = 0;};
+  if(queueLength[j] &gt; vehLength){queueLength[j] = queueLength[j] - vehLength;}
+  else{queueLength[j] = 0;}
+
+}
+void reduceVehicleCount(int c_phase){
+    int waitingVeh = 0;
+    int i = 1,j=1;
+    for(j=1;j&lt;=4;j++){
+        if(j == c_phase){
+            for(i=1;i&lt;=4;i++){
+                // If vehicle type is Bus
+                if(i == 1){
+                    normalValue(i,j,1,busLength);
+                }
+                 if(i == 2 || i == 3 &amp;&amp; waitingVehicles[j][i] &gt;= 1){ // Car and 3-Wheeler
+                    normalValue(i,j,2,carLength);
+                }
+                 if(i == 4 &amp;&amp; waitingVehicles[j][i] &gt;= 1){ // 2-Wheeler
+                    normalValue(i,j,1,bikeLength);
+                }
+
+            }
+        }
+    }
+
+}
+void flow(int current_delay,int current_phase){
+    const int upperStep = cs + current_delay;
+    int j;
+    for (j=cs; j&lt;upperStep; j++) {
+        totalwaitingVehicles = totalwaitingVehicles + calculateWaitingVehicles(current_phase);
+        reduceVehicleCount(current_phase);
+    }
+    cs = cs + current_delay;
+    t = 0;
+}
+</declaration>
+		<location id="id0" x="425" y="357">
+			<name x="399" y="323">West</name>
+			<label kind="invariant" x="391" y="374">t &lt;= delay</label>
+		</location>
+		<location id="id1" x="901" y="357">
+			<name x="891" y="323">East</name>
+			<label kind="invariant" x="891" y="374">t &lt;= delay</label>
+		</location>
+		<location id="id2" x="663" y="119">
+			<name x="653" y="85">North</name>
+			<label kind="invariant" x="586" y="102">t &lt;= delay</label>
+		</location>
+		<location id="id3" x="663" y="561">
+			<name x="646" y="578">South</name>
+			<label kind="invariant" x="680" y="552">t &lt;= delay</label>
+		</location>
+		<location id="id4" x="663" y="357">
+			<committed/>
+		</location>
+		<location id="id5" x="595" y="289">
+			<name x="585" y="255">Start</name>
+			<urgent/>
+		</location>
+		<location id="id6" x="731" y="433">
+			<name x="722" y="442">End</name>
+		</location>
+		<init ref="id5"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id6"/>
+			<label kind="guard" x="671" y="399">cs &gt;= Horizon</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id4"/>
+			<label kind="guard" x="476" y="280">t &gt;= delay</label>
+			<label kind="assignment" x="484" y="306">flow(delay,4)</label>
+			<nail x="476" y="306"/>
+			<nail x="578" y="306"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="544" y="433">t &gt;= delay</label>
+			<label kind="assignment" x="544" y="459">flow(delay,3)</label>
+			<nail x="612" y="510"/>
+			<nail x="612" y="408"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="guard" x="671" y="467">cs &lt; Horizon</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="guard" x="765" y="382">t &gt;= delay</label>
+			<label kind="assignment" x="765" y="408">flow(delay,2)</label>
+			<nail x="850" y="408"/>
+			<nail x="714" y="408"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="guard" x="731" y="331">cs &lt; Horizon</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="guard" x="722" y="178">t &gt;= delay</label>
+			<label kind="assignment" x="722" y="204">flow(delay,1)</label>
+			<nail x="714" y="170"/>
+			<nail x="714" y="306"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="578" y="170">cs &lt; Horizon</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id0"/>
+			<label kind="guard" x="484" y="340">cs &lt; Horizon</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="603" y="289">initialize()</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+yellow = yellowPhase();
+system yellow;
+    </system>
+	<queries>
+		<query>
+			<formula>strategy Opt =minE (totalwaitingVehicles) [&lt;=120]: &lt;&gt; yellow.End</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt =maxE (crossedCarsTotal) [&lt;=450]: &lt;&gt; timer&gt;=400</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=100] { 2*yellow.North + 4*yellow.East + 6* yellow.South + 8*yellow.West }</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt =minE (totalwaitingCars) [&lt;=4*70]: &lt;&gt; trafficLight_4.Ok</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=100] { 2*yellow.North + 4*yellow.East + 6* yellow.South + 8*yellow.West } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_2.green + 6*trafficLight_2.yellow + 10* trafficLight_2.red } under Opt2</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_2.green + 6*trafficLight_2.yellow + 10* trafficLight_2.red } under Opt1</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt2 =minE (trafficLight_2.totalJammedCars) [&lt;=4*180]: &lt;&gt; timer &gt;=300</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy Opt3 =minE (totalwaitingCars) [&lt;=500]: &lt;&gt; trafficLight_3.Ok</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_3.green + 6*trafficLight_3.yellow + 10* trafficLight_3.red } under Opt3</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=4*80] { 2*trafficLight_1.GREEN_A + 4*trafficLight_1.YELLOW + 6* trafficLight_1.GREEN_B,8*trafficLight_2.GREEN_A + 10*trafficLight_2.YELLOW + 12* trafficLight_2.GREEN_B } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*trafficLight_2.GREEN_A + 6*trafficLight_2.YELLOW + 8* trafficLight_2.GREEN_B,10*trafficLight_1.GREEN_A + 12*trafficLight_1.YELLOW + 14* trafficLight_1.GREEN_B } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=300] { 2*trafficLight_3.green + 6*trafficLight_3.yellow + 10* trafficLight_3.red } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=700] { 2*trafficLight_4.green + 6*trafficLight_4.yellow + 10* trafficLight_4.red } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=300] { 2*trafficLight_5.green + 6*trafficLight_5.yellow + 10* trafficLight_5.red } under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=500; 50] (min: totalwaitingCars)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=2000; 5000] (max: crossedCarsTotal) under Opt</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>E[&lt;=2000; 5000] (max: crossedCarsTotal)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>simulate 1[&lt;=200] { 2*TL_model.green + 6*TL_model.yellow + 10* TL_model.red }</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
