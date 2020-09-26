@@ -1,0 +1,9 @@
+<configuration>
+<input>
+	<taz-files value="osm.taz.xml"/>
+	<od-matrix-files value="osm.od"/>
+</input>
+<output>
+ <output-file value="od_file.odtrips.xml"/>
+</output>
+</configuration>

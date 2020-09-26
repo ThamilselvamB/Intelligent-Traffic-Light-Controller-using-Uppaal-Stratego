@@ -1,0 +1,9 @@
+<configuration>
+<input>
+<net-file value="fourPhases.net.xml"/>
+<route-files value="od_file.odtrips.xml"/>
+</input>
+<output>
+    <output-file value ="odRoute.rou.xml"/>
+</output>
+</configuration>
