@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on Tuesday 18 February 2020 11:11:33 AM IST by Eclipse SUMO netedit Version 1.2.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="/home/shiraj/PycharmProjects/fourPhases/fourPhasesAhm/dataFiles/fourPhases.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="/home/shiraj/PycharmProjects/fourPhases/fourPhasesAhm/dataFiles/fourPhases.net.xml"/>
+        <output.street-names value="true"/>
+    </output>
+
+    <processing>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="true"/>
+    </processing>
+
+    <junctions>
+        <no-internal-links value="false"/>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
+        <rectangular-lane-cut value="false"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="true"/>
+    </pedestrian>
+
+</configuration>
+-->
+
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+    <tlLogic id="GS_cluster_1781956430_1781956432_1781956434_1781956435" type="actuated" programID="0" offset="0">
+        <phase duration="30" state="rrrrrgGGggrrrrrrrrrrrrrrrr"/>
+        <phase duration="2" state="rrrrryyyyyrrrrrrrrrrrrrrrr"/>
+        <phase duration="30" state="gGGggrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="2" state="yyyyyrrrrrrrrrrrrrrrrrrrrr"/>
+        <phase duration="30" state="rrrrrrrrrrrrrrrgGGggrrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrrrrrrryyyyyrrrrrr"/>
+        <phase duration="30" state="rrrrrrrrrrgGGGgrrrrrrrrrrr"/>
+        <phase duration="2" state="rrrrrrrrrryyyyyrrrrrrrrrrr"/>
+        <phase duration="1" state="rrrrrrrrrrrrrrrrrrrrGGGGGG"/>
+    </tlLogic>
+</additional>
+	<route id="route_1" edges="167584432#5 167584712 "/>
+	<route id="route_2" edges="167584432#5 244327260#6"/>
+	<route id="route_3" edges="167584432#5 167584712 "/>
+		<route id="route_7" edges="167584711#0 167584432#5  "/>
+	<route id="route_8" edges="167584711#0 166954897#3"/>
+	<route id="route_9" edges="167584711#0 244327260#6 "/>
+	<route id="route_10" edges="166954897#0 166954897#3"/>
+	<route id="route_11" edges="166954897#0 167584711#0"/>
+	<route id="route_12" edges="166954897#0 167584434#1"/>
