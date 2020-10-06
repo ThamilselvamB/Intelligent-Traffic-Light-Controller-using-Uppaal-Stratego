@@ -176,10 +176,11 @@ def generate_routefile(cases, outputfile,randomSeed):
     N = 1800  # number of time steps
     cf = Configuration(cases)
     # print(cf.pH)
-    pBus = 5. / 100
-    pCar = 20. / 100
-    p3Wheel = 35. / 100
-    p2Wheel = 40. / 100
+    # according to distribution in Ahmadabad city
+    pBus = 2. / 100
+    pCar = 17. / 100
+    p3Wheel = 6. / 100
+    p2Wheel = 75. / 100
     v_Types = ['Bus','Auto','MotorCycle','Car']
     with open("../dataFiles/"+outputfile, "w") as routes:
         totalCars = 0;
