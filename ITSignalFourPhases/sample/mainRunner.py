@@ -549,9 +549,9 @@ class DetectorsInTraffic:
         self.queueLength = [0, 0, 0, 0]
         self.previousWaitingTime = 0
         self.currentGreenTime = [0, 0, 0, 0]
-        self.maxGreenTime = [50, 50, 50, 50]
+        self.maxGreenTime = [120, 120, 120, 120]
         self.loopCurrentGreenTime = [0, 0, 0, 0]
-        self.loopMaxGreenTime = [45, 50, 50, 45]
+        self.loopMaxGreenTime = [55, 45, 55, 45]
         self.extendGreen = False
         self.curPhase = 1  # North
         self.nextPhase = 1  # North
@@ -1085,8 +1085,8 @@ def run():
                 trafficLight[21].maxGreenTime = [areaGreenTime_4[12:16]]
                 trafficLight[22].maxGreenTime = [areaGreenTime_4[16:20]]
 
-
-                areaTimer = 50
+                areaTimer_check = random.randint(1, 9)
+                areaTimer = num1 = 20 * areaTimer_check
                 print("-------------------Green Time is updated from Area Controller ---------------------------------")
             else:
                 if areaTimer < 0:
@@ -1094,7 +1094,7 @@ def run():
                 else:
                     areaTimer = areaTimer - 1
 
-            if intelligentTimer == 0 and step > 50:
+            if intelligentTimer == 0 and step > 10:
                 for i in range(0, noOfTrafficLights):
                     print("%s vehicles are waiting in %s intersection:" % (trafficLight[i].vehicleListForUppaal, i + 1))
                     if trafficLight[i].extendGreen:
@@ -1221,7 +1221,7 @@ def get_options(controllerNameEx,cases):
     optParser.add_option("--nogui", action="store_true",
                          default=True, help="run the commandline version of sumo")
     optParser.add_option("--controller", type="string", dest="controller", default= controllerNameEx)
-    optParser.add_option("--step", type="string", dest="step", default="500")
+    optParser.add_option("--step", type="string", dest="step", default="1200")
     optParser.add_option("--load", type="string", dest="load", default=cases)
     options, args = optParser.parse_args()
     return options
@@ -1232,7 +1232,7 @@ if __name__ == "__main__":
 
     controllerName = ('Fixed-Time', 'Actuated','UppaalStratego','Intelligent','CoordinatedIntelligent_1')
     cases = ["Case1Low","Case1Mid","Case1High","Case2","Case3","Case4"]
-    controllerName = [controllerName[4]]
+    controllerName = ['Intelligent']
     cases = ['Case1High']
     for c in cases:
         plottingPurpose.writeToFile("results/resultOfExperiments.csv", "----------------------------------------------------" + c +
